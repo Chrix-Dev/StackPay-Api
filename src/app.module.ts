@@ -3,8 +3,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { KeysModule } from './keys/keys.module';
 import { PaymentsModule } from './payments/payments.module';
+import { CommonModule } from './common/common.module';
+import { MessagingModule } from './messaging/messaging.module';
+
 
 @Module({
-  imports: [PrismaModule, AuthModule, KeysModule, PaymentsModule],
+  imports: [CommonModule, PrismaModule, AuthModule, KeysModule, PaymentsModule, MessagingModule],
 })
 export class AppModule {}
