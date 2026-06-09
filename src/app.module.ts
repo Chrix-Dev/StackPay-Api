@@ -7,11 +7,12 @@ import { CommonModule } from './common/common.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { IdentityModule } from './identity/identity.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { WalletModule } from './wallet/wallet.module';
 
 
 
 
 @Module({
-  imports: [CommonModule, PrismaModule, AuthModule, KeysModule, PaymentsModule, MessagingModule, IdentityModule, WebhooksModule],
+  imports: [CommonModule, PrismaModule, AuthModule, KeysModule, PaymentsModule, MessagingModule, IdentityModule, WebhooksModule, WalletModule],
 })
 export class AppModule {}

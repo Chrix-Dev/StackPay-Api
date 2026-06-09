@@ -15,6 +15,7 @@ model Developer {
   lastName      String
   isVerified    Boolean  @default(false)
   verifyToken   String?
+  wallet        Wallet?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -76,4 +77,32 @@ model WebhookDelivery {
 
   webhookId   String
   webhook     Webhook  @relation(fields: [webhookId], references: [id])
+}
+
+model Wallet {
+  id          String   @id @default(uuid())
+  balance     Float    @default(0)
+  pin         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  developerId String   @unique
+  developer   Developer @relation(fields: [developerId], references: [id])
+
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id              String   @id @default(uuid())
+  type            String
+  amount          Float
+  balanceBefore   Float
+  balanceAfter    Float
+  reference       String   @unique
+  idempotencyKey  String?  @unique
+  description     String?
+  createdAt       DateTime @default(now())
+
+  walletId        String
+  wallet          Wallet   @relation(fields: [walletId], references: [id])
 }
