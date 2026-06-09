@@ -20,6 +20,7 @@ model Developer {
 
   apiKeys       ApiKey[]
   requestLogs   RequestLog[]
+  webhooks      Webhook[]
 }
 
 model ApiKey {
@@ -48,4 +49,31 @@ model RequestLog {
 
   apiKeyId    String?
   apiKey      ApiKey?   @relation(fields: [apiKeyId], references: [id])
+}
+
+model Webhook {
+  id          String   @id @default(uuid())
+  url         String
+  description String?
+  isActive    Boolean  @default(true)
+  secret      String
+  createdAt   DateTime @default(now())
+
+  developerId String
+  developer   Developer @relation(fields: [developerId], references: [id])
+
+  deliveries  WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id          String   @id @default(uuid())
+  event       String
+  payload     Json
+  statusCode  Int?
+  success     Boolean  @default(false)
+  attempts    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  webhookId   String
+  webhook     Webhook  @relation(fields: [webhookId], references: [id])
 }
