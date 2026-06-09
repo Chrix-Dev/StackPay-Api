@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { BullModule } from '@nestjs/bull';
+import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { KeysModule } from './keys/keys.module';
@@ -15,6 +16,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
       {
         name: 'global',
