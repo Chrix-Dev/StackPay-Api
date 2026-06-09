@@ -193,4 +193,24 @@ export class WalletService {
 
     return { message: 'PIN set successfully' };
   }
+
+  async changePin(developerId: string, oldPin: string, newPin: string) {
+  const wallet = await this.getOrCreateWallet(developerId);
+
+  if (!wallet.pin) {
+    throw new BadRequestException('No PIN set. Use /wallet/pin to set one first');
+  }
+
+  const pinValid = await bcrypt.compare(oldPin, wallet.pin);
+  if (!pinValid) throw new UnauthorizedException('Invalid current PIN');
+
+  const hashed = await bcrypt.hash(newPin, 10);
+
+  await this.prisma.wallet.update({
+    where: { id: wallet.id },
+    data: { pin: hashed },
+  });
+
+  return { message: 'PIN changed successfully' };
+}
 }

@@ -7,6 +7,7 @@ import { TransferWalletDto } from './dto/transfer-wallet.dto';
 import { WithdrawWalletDto } from './dto/withdraw-wallet.dto';
 import { IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { ChangePinDto } from './dto/change-pin.dto';
 
 class SetPinDto {
   @ApiProperty({ example: '1234' })
@@ -45,4 +46,8 @@ export class WalletController {
   withdraw(@Req() req: any, @Body() dto: WithdrawWalletDto) {
     return this.walletService.withdraw(req.user.id, dto);
   }
-}
+
+  @Post('pin/change')
+  changePin(@Req() req: any, @Body() dto: ChangePinDto) {
+    return this.walletService.changePin(req.user.id, dto.oldPin, dto.newPin);
+}}

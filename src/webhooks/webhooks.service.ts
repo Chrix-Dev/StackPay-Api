@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
@@ -8,9 +10,11 @@ import * as crypto from 'crypto';
 @Injectable()
 export class WebhooksService {
   constructor(
-    private prisma: PrismaService,
-    private http: HttpService,
-  ) {}
+  private prisma: PrismaService,
+  private http: HttpService,
+  @InjectQueue('webhooks') private webhookQueue: Queue,
+
+) {}
 
   private generateSecret(): string {
     return `whsec_${crypto.randomBytes(32).toString('hex')}`;
@@ -128,18 +132,27 @@ export class WebhooksService {
   }
 
   async emitEvent(developerId: string, event: string, data: any) {
-    const webhooks = await this.prisma.webhook.findMany({
-      where: { developerId, isActive: true },
-    });
+  const webhooks = await this.prisma.webhook.findMany({
+    where: { developerId, isActive: true },
+  });
 
-    const payload = {
-      event,
-      data,
-      timestamp: new Date().toISOString(),
-    };
+  const payload = {
+    event,
+    data,
+    timestamp: new Date().toISOString(),
+  };
 
-    for (const webhook of webhooks) {
-      await this.deliverWebhook(webhook, payload);
-    }
+  for (const webhook of webhooks) {
+    await this.webhookQueue.add(
+      'deliver',
+      { webhook, payload },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      },
+    );
   }
-}
+}}

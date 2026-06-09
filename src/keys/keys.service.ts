@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateKeyDto } from './dto/create-key.dto';
 import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class KeysService {
@@ -13,31 +14,40 @@ export class KeysService {
   }
 
   async createKey(developerId: string, dto: CreateKeyDto) {
+    const rawKey = this.generateKey();
+    const hashedKey = await bcrypt.hash(rawKey, 10);
+
     const key = await this.prisma.apiKey.create({
       data: {
-        key: this.generateKey(),
+        key: hashedKey,
         name: dto.name,
         developerId,
       },
     });
 
     return {
-      message: 'API key created',
-      key,
+      message: 'API key created. Store this key safely — it will not be shown again.',
+      key: {
+        id: key.id,
+        name: key.name,
+        key: rawKey,
+        createdAt: key.createdAt,
+      },
     };
   }
 
   async listKeys(developerId: string) {
-    return this.prisma.apiKey.findMany({
+    const keys = await this.prisma.apiKey.findMany({
       where: { developerId },
       select: {
         id: true,
         name: true,
-        key: true,
         isActive: true,
         createdAt: true,
       },
     });
+
+    return keys;
   }
 
   async revokeKey(developerId: string, keyId: string) {
@@ -57,5 +67,19 @@ export class KeysService {
     });
 
     return { message: 'API key revoked' };
+  }
+
+  async validateKey(rawKey: string) {
+    const keys = await this.prisma.apiKey.findMany({
+      where: { isActive: true },
+      include: { developer: true },
+    });
+
+    for (const key of keys) {
+      const match = await bcrypt.compare(rawKey, key.key);
+      if (match) return key;
+    }
+
+    return null;
   }
 }
