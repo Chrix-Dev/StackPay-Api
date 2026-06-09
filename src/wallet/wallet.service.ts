@@ -14,6 +14,29 @@ export class WalletService {
     return `txn_${Date.now()}_${uuidv4().substring(0, 8)}`;
   }
 
+  private async handleFailedPin(wallet: any) {
+    const attempts = wallet.failedPinAttempts + 1;
+
+    if (attempts >= 3) {
+      await this.prisma.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          failedPinAttempts: attempts,
+          isLocked: true,
+          lockReason: 'Too many failed PIN attempts',
+        },
+      });
+      throw new UnauthorizedException('Wallet locked due to too many failed PIN attempts. Contact support.');
+    }
+
+    await this.prisma.wallet.update({
+      where: { id: wallet.id },
+      data: { failedPinAttempts: attempts },
+    });
+
+    throw new UnauthorizedException(`Invalid PIN. ${3 - attempts} attempt(s) remaining.`);
+  }
+
   async getOrCreateWallet(developerId: string) {
     let wallet = await this.prisma.wallet.findUnique({
       where: { developerId },
@@ -29,8 +52,7 @@ export class WalletService {
   }
 
   async getWallet(developerId: string) {
-    const wallet = await this.getOrCreateWallet(developerId);
-    return wallet;
+    return this.getOrCreateWallet(developerId);
   }
 
   async fundWallet(developerId: string, dto: FundWalletDto) {
@@ -42,8 +64,13 @@ export class WalletService {
     }
 
     const wallet = await this.getOrCreateWallet(developerId);
+
+    if (wallet.isLocked) {
+      throw new BadRequestException('Wallet is locked. Contact support to unlock.');
+    }
+
     const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore + dto.amount;
+    const balanceAfter = Number(balanceBefore) + dto.amount;
 
     const transaction = await this.prisma.$transaction(async (tx) => {
       await tx.wallet.update({
@@ -78,14 +105,23 @@ export class WalletService {
 
     const senderWallet = await this.getOrCreateWallet(developerId);
 
+    if (senderWallet.isLocked) {
+      throw new BadRequestException('Wallet is locked. Contact support to unlock.');
+    }
+
     if (!senderWallet.pin) {
       throw new BadRequestException('Please set a transaction PIN first');
     }
 
     const pinValid = await bcrypt.compare(dto.pin, senderWallet.pin);
-    if (!pinValid) throw new UnauthorizedException('Invalid PIN');
+    if (!pinValid) await this.handleFailedPin(senderWallet);
 
-    if (senderWallet.balance < dto.amount) {
+    await this.prisma.wallet.update({
+      where: { id: senderWallet.id },
+      data: { failedPinAttempts: 0 },
+    });
+
+    if (Number(senderWallet.balance) < dto.amount) {
       throw new BadRequestException('Insufficient balance');
     }
 
@@ -94,12 +130,12 @@ export class WalletService {
     const transactions = await this.prisma.$transaction(async (tx) => {
       await tx.wallet.update({
         where: { id: senderWallet.id },
-        data: { balance: senderWallet.balance - dto.amount },
+        data: { balance: Number(senderWallet.balance) - dto.amount },
       });
 
       await tx.wallet.update({
         where: { id: recipientWallet.id },
-        data: { balance: recipientWallet.balance + dto.amount },
+        data: { balance: Number(recipientWallet.balance) + dto.amount },
       });
 
       const ref = this.generateReference();
@@ -110,7 +146,7 @@ export class WalletService {
           type: 'DEBIT',
           amount: dto.amount,
           balanceBefore: senderWallet.balance,
-          balanceAfter: senderWallet.balance - dto.amount,
+          balanceAfter: Number(senderWallet.balance) - dto.amount,
           reference: ref,
           idempotencyKey: dto.idempotencyKey,
           description: `Transfer to ${dto.recipientId}`,
@@ -123,7 +159,7 @@ export class WalletService {
           type: 'CREDIT',
           amount: dto.amount,
           balanceBefore: recipientWallet.balance,
-          balanceAfter: recipientWallet.balance + dto.amount,
+          balanceAfter: Number(recipientWallet.balance) + dto.amount,
           reference: `${ref}_cr`,
           description: `Transfer from ${developerId}`,
         },
@@ -145,19 +181,28 @@ export class WalletService {
 
     const wallet = await this.getOrCreateWallet(developerId);
 
+    if (wallet.isLocked) {
+      throw new BadRequestException('Wallet is locked. Contact support to unlock.');
+    }
+
     if (!wallet.pin) {
       throw new BadRequestException('Please set a transaction PIN first');
     }
 
     const pinValid = await bcrypt.compare(dto.pin, wallet.pin);
-    if (!pinValid) throw new UnauthorizedException('Invalid PIN');
+    if (!pinValid) await this.handleFailedPin(wallet);
 
-    if (wallet.balance < dto.amount) {
+    await this.prisma.wallet.update({
+      where: { id: wallet.id },
+      data: { failedPinAttempts: 0 },
+    });
+
+    if (Number(wallet.balance) < dto.amount) {
       throw new BadRequestException('Insufficient balance');
     }
 
     const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore - dto.amount;
+    const balanceAfter = Number(balanceBefore) - dto.amount;
 
     const transaction = await this.prisma.$transaction(async (tx) => {
       await tx.wallet.update({
@@ -195,22 +240,37 @@ export class WalletService {
   }
 
   async changePin(developerId: string, oldPin: string, newPin: string) {
-  const wallet = await this.getOrCreateWallet(developerId);
+    const wallet = await this.getOrCreateWallet(developerId);
 
-  if (!wallet.pin) {
-    throw new BadRequestException('No PIN set. Use /wallet/pin to set one first');
+    if (!wallet.pin) {
+      throw new BadRequestException('No PIN set. Use /wallet/pin to set one first');
+    }
+
+    const pinValid = await bcrypt.compare(oldPin, wallet.pin);
+    if (!pinValid) throw new UnauthorizedException('Invalid current PIN');
+
+    const hashed = await bcrypt.hash(newPin, 10);
+
+    await this.prisma.wallet.update({
+      where: { id: wallet.id },
+      data: { pin: hashed },
+    });
+
+    return { message: 'PIN changed successfully' };
   }
 
-  const pinValid = await bcrypt.compare(oldPin, wallet.pin);
-  if (!pinValid) throw new UnauthorizedException('Invalid current PIN');
+  async unlockWallet(developerId: string) {
+    const wallet = await this.getOrCreateWallet(developerId);
 
-  const hashed = await bcrypt.hash(newPin, 10);
+    await this.prisma.wallet.update({
+      where: { id: wallet.id },
+      data: {
+        isLocked: false,
+        failedPinAttempts: 0,
+        lockReason: null,
+      },
+    });
 
-  await this.prisma.wallet.update({
-    where: { id: wallet.id },
-    data: { pin: hashed },
-  });
-
-  return { message: 'PIN changed successfully' };
-}
+    return { message: 'Wallet unlocked successfully' };
+  }
 }

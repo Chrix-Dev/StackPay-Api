@@ -15,6 +15,7 @@ model Developer {
   lastName      String
   isVerified    Boolean  @default(false)
   verifyToken   String?
+  role          String   @default("USER")
   wallet        Wallet?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -81,8 +82,11 @@ model WebhookDelivery {
 
 model Wallet {
   id          String   @id @default(uuid())
-  balance     Float    @default(0)
+  balance     Decimal  @default(0) @db.Decimal(20, 2)
   pin         String?
+  isLocked    Boolean  @default(false)
+  lockReason  String?
+  failedPinAttempts Int @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -95,9 +99,9 @@ model Wallet {
 model WalletTransaction {
   id              String   @id @default(uuid())
   type            String
-  amount          Float
-  balanceBefore   Float
-  balanceAfter    Float
+  amount          Decimal  @db.Decimal(20, 2)
+  balanceBefore   Decimal  @db.Decimal(20, 2)
+  balanceAfter    Decimal  @db.Decimal(20, 2)
   reference       String   @unique
   idempotencyKey  String?  @unique
   description     String?

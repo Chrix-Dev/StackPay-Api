@@ -13,6 +13,7 @@ import { IdentityModule } from './identity/identity.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { WalletModule } from './wallet/wallet.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     WebhooksModule,
     WalletModule,
     DashboardModule,
+    AdminModule,
   ],
   providers: [
     {
