@@ -8,11 +8,12 @@ import { MessagingModule } from './messaging/messaging.module';
 import { IdentityModule } from './identity/identity.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { WalletModule } from './wallet/wallet.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 
 
 
 @Module({
-  imports: [CommonModule, PrismaModule, AuthModule, KeysModule, PaymentsModule, MessagingModule, IdentityModule, WebhooksModule, WalletModule],
+  imports: [CommonModule, PrismaModule, AuthModule, KeysModule, PaymentsModule, MessagingModule, IdentityModule, WebhooksModule, WalletModule, DashboardModule],
 })
 export class AppModule {}
