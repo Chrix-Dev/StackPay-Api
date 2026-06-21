@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FundWalletDto } from './dto/fund-wallet.dto';
 import { TransferWalletDto } from './dto/transfer-wallet.dto';
 import { WithdrawWalletDto } from './dto/withdraw-wallet.dto';
+import { QueryTransactionsDto } from './dto/query-transactions.dto';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -273,4 +274,56 @@ export class WalletService {
 
     return { message: 'Wallet unlocked successfully' };
   }
+
+  async getTransactions(developerId: string, query: QueryTransactionsDto) {
+  const wallet = await this.getOrCreateWallet(developerId);
+
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 10;
+  const skip = (page - 1) * limit;
+
+  const where: any = { walletId: wallet.id };
+
+  if (query.type) {
+    where.type = query.type;
+  }
+
+  if (query.from || query.to) {
+    where.createdAt = {};
+    if (query.from) where.createdAt.gte = new Date(query.from);
+    if (query.to) where.createdAt.lte = new Date(query.to);
+  }
+
+  const [transactions, total] = await Promise.all([
+    this.prisma.walletTransaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    this.prisma.walletTransaction.count({ where }),
+  ]);
+
+  return {
+    data: transactions,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+async getTransaction(developerId: string, transactionId: string) {
+  const wallet = await this.getOrCreateWallet(developerId);
+
+  const transaction = await this.prisma.walletTransaction.findFirst({
+    where: { id: transactionId, walletId: wallet.id },
+  });
+
+  if (!transaction) throw new NotFoundException('Transaction not found');
+
+  return transaction;
+}
 }
