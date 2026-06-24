@@ -1,98 +1,269 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# StackPay-Api
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+![Status](https://img.shields.io/badge/status-in%20development-yellow)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?logo=postgresql&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**A fintech infrastructure platform for wallet management, payments, and developer tooling.**
 
-## Description
+StackPay is a unified backend system that gives developers a single integration point for payments, identity verification, wallet operations, and webhook management — eliminating the need to integrate Paystack, Flutterwave, and other providers separately. It's built to demonstrate the engineering patterns behind real fintech infrastructure products like Paystack, Mono, and Flutterwave: reliability, idempotency, asynchronous processing, and secure access control.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+> **Status:** Actively in development. Core modules are functional; see [Roadmap](#roadmap) for what's next.
 
-## Project setup
+---
 
-```bash
-$ npm install
+## Table of contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Features](#features)
+- [Project structure](#project-structure)
+- [Installation](#installation)
+- [API reference](#api-reference)
+- [Engineering concepts demonstrated](#engineering-concepts-demonstrated)
+- [Roadmap](#roadmap)
+- [License](#license)
+
+---
+
+## Overview
+
+Without StackPay, a developer building a fintech product in Nigeria has to integrate Paystack for payments, build their own wallet system, handle KYC separately, and manage webhooks from multiple providers independently. StackPay collapses this into one API — developers sign up, get an API key, and get consistent, unified responses regardless of which provider is handling a request behind the scenes.
+
+The project is built around three core principles:
+
+- **Reliability** — idempotency keys, atomic transactions, and retry-safe webhook delivery
+- **Security** — JWT authentication, RBAC, hashed API keys, and request validation
+- **Extensibility** — a provider abstraction layer designed to support multiple payment processors
+
+---
+
+## Architecture
+
+StackPay follows a modular architecture using NestJS, with each domain isolated into its own module:
+
+```
+┌─────────────────────────────────────────────┐
+│                  API Gateway                  │
+│         (Guards · Validation · Logging)        │
+└───────────────────┬─────────────────────────┘
+                     │
+   ┌─────────────────┼─────────────────┐
+   │                 │                 │
+┌──▼───┐        ┌────▼────┐       ┌────▼────┐
+│ Auth │        │ Wallet  │       │ Payment │
+│Module│        │ Module  │       │ Module  │
+└──┬───┘        └────┬────┘       └────┬────┘
+   │                 │                 │
+   │           ┌─────▼─────┐     ┌─────▼─────┐
+   │           │Transaction│     │  Webhook  │
+   │           │  Module   │     │  Module   │
+   │           └───────────┘     └─────┬─────┘
+   │                                   │
+┌──▼──────┐                      ┌─────▼─────┐
+│API Key  │                      │   Bull    │
+│ Module  │                      │  Queue    │
+└─────────┘                      └─────┬─────┘
+                                        │
+                                  ┌─────▼─────┐
+                                  │   Redis   │
+                                  └───────────┘
 ```
 
-## Compile and run the project
+All modules persist through **PostgreSQL via Prisma ORM**. **Redis** backs caching and queue management, with **Bull** handling background job processing — primarily webhook delivery and retry workflows.
 
-```bash
-# development
-$ npm run start
+---
 
-# watch mode
-$ npm run start:dev
+## Tech stack
 
-# production mode
-$ npm run start:prod
+| Layer | Technology |
+|---|---|
+| Backend framework | NestJS, TypeScript, Node.js |
+| Database | PostgreSQL, Prisma ORM |
+| Caching & queues | Redis, Bull |
+| Authentication | JWT, RBAC, API Keys |
+| Documentation | Swagger / OpenAPI |
+| Infrastructure | Docker |
+| Payments | Paystack *(Flutterwave planned)* |
+
+---
+
+## Features
+
+### Authentication & authorization
+- JWT-based authentication
+- Role-Based Access Control (RBAC)
+- Guard-protected endpoints
+- Secure user authentication workflows
+- Refresh token support *(planned)*
+
+### Wallet infrastructure
+- Wallet creation and management
+- Wallet funding, wallet-to-wallet transfers, and withdrawals
+- PIN verification for sensitive operations
+- Transaction recording and tracking
+- Idempotency protection to prevent duplicate financial operations
+
+### API key management
+- API key generation, validation, and revocation
+- Secure API key hashing and storage
+- Access management for third-party consumers
+
+### Payment processing
+- Paystack integration with payment verification
+- Webhook handling for payment events
+- Extensible provider abstraction layer for future integrations
+
+### Webhook infrastructure
+- Webhook registration and event delivery
+- Asynchronous processing via Bull and Redis
+- Retry mechanisms for failed deliveries with delivery tracking
+
+### Analytics & monitoring
+- Request logging and API usage tracking
+- Success/failure metrics
+- Dashboard statistics for operational visibility
+
+### Security
+- JWT authentication, RBAC, and API key authentication
+- Secure password handling
+- Idempotency keys and request validation
+- Financial transaction safeguards
+
+---
+
+## Project structure
+
+```
+stackpay-api/
+├── src/
+│   ├── auth/              # JWT authentication & RBAC
+│   ├── users/              # User management
+│   ├── wallet/             # Wallet operations
+│   ├── transactions/       # Transaction recording & idempotency
+│   ├── api-keys/           # API key generation & validation
+│   ├── payments/           # Paystack integration
+│   ├── webhooks/           # Webhook registration & delivery
+│   ├── analytics/          # Usage tracking & metrics
+│   ├── dashboard/          # Dashboard statistics
+│   ├── queues/             # Bull queue processors
+│   ├── common/             # Guards, interceptors, decorators
+│   └── main.ts
+├── prisma/
+│   └── schema.prisma
+├── docker-compose.yml
+└── README.md
 ```
 
-## Run tests
+---
+
+## Installation
+
+### Prerequisites
+- Node.js (v18+)
+- PostgreSQL
+- Redis
+- Docker *(optional, for containerized setup)*
+
+### Setup
 
 ```bash
-# unit tests
-$ npm run test
+# Clone the repository
+git clone https://github.com/Chrix-Dev/StackPay-Api.git
+cd StackPay-Api
 
-# e2e tests
-$ npm run test:e2e
+# Install dependencies
+npm install
 
-# test coverage
-$ npm run test:cov
+# Configure environment variables
+cp .env.example .env
 ```
 
-## Deployment
+Update `.env` with your database, Redis, and Paystack credentials:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/stackpay"
+REDIS_HOST="localhost"
+REDIS_PORT=6379
+JWT_SECRET="your-jwt-secret"
+PAYSTACK_SECRET_KEY="your-paystack-secret-key"
+```
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Run Prisma migrations
+npx prisma migrate dev
+
+# Start the development server
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The API Swagger documentation is available at 'https://stackpay-api.onrender.com'.
 
-## Resources
+### Running with Docker
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+docker-compose up --build
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+---
 
-## Support
+## API reference
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+| Module | Method | Endpoint | Description |
+|---|---|---|---|
+| Auth | `POST` | `/auth/register` | Register a new user |
+| Auth | `POST` | `/auth/login` | Authenticate and receive a JWT |
+| Wallet | `POST` | `/wallet/fund` | Fund a wallet |
+| Wallet | `POST` | `/wallet/transfer` | Transfer between wallets |
+| Wallet | `POST` | `/wallet/withdraw` | Withdraw funds |
+| API Keys | `POST` | `/api-keys` | Generate a new API key |
+| API Keys | `DELETE` | `/api-keys/:id` | Revoke an API key |
+| Payments | `POST` | `/payments/initialize` | Initialize a Paystack payment |
+| Payments | `GET` | `/payments/verify/:reference` | Verify a payment |
+| Webhooks | `POST` | `/webhooks` | Register a webhook endpoint |
+| Webhooks | `GET` | `/webhooks/:id/deliveries` | View delivery history |
+| Dashboard | `GET` | `/dashboard/stats` | View usage statistics |
 
-## Stay in touch
+Full interactive documentation is available via Swagger once the server is running.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
+
+## Engineering concepts demonstrated
+
+- REST API design
+- Fintech infrastructure patterns
+- Authentication & authorization (JWT, RBAC, API keys)
+- Background job processing & queue-based architecture
+- Payment gateway integration
+- Webhook processing with retry mechanisms
+- Idempotency & transaction consistency
+- Modular system design
+- Analytics & monitoring
+
+---
+
+## Roadmap
+
+- [ ] Transaction History API with pagination and filtering
+- [ ] Refresh token authentication
+- [ ] API usage quotas and per-key rate limiting
+- [ ] Automated unit, integration, and end-to-end tests
+- [ ] GitHub Actions CI/CD pipeline
+- [ ] Structured logging
+- [ ] Multi-provider payment architecture
+- [ ] Flutterwave integration
+
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is licensed under the MIT License.
+
+---
+
+*StackPay is a portfolio project built to demonstrate backend infrastructure thinking for fintech systems. Built by [Chris](https://github.com/Chrix-Dev).*
