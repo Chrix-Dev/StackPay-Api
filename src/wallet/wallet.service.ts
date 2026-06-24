@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { TransactionType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FundWalletDto } from './dto/fund-wallet.dto';
 import { TransferWalletDto } from './dto/transfer-wallet.dto';
@@ -82,7 +83,7 @@ export class WalletService {
       return tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
-          type: 'CREDIT',
+          type: TransactionType.CREDIT,
           amount: dto.amount,
           balanceBefore,
           balanceAfter,
@@ -144,7 +145,7 @@ export class WalletService {
       const debit = await tx.walletTransaction.create({
         data: {
           walletId: senderWallet.id,
-          type: 'DEBIT',
+          type: TransactionType.DEBIT,
           amount: dto.amount,
           balanceBefore: senderWallet.balance,
           balanceAfter: Number(senderWallet.balance) - dto.amount,
@@ -157,7 +158,7 @@ export class WalletService {
       const credit = await tx.walletTransaction.create({
         data: {
           walletId: recipientWallet.id,
-          type: 'CREDIT',
+          type: TransactionType.CREDIT,
           amount: dto.amount,
           balanceBefore: recipientWallet.balance,
           balanceAfter: Number(recipientWallet.balance) + dto.amount,
@@ -214,7 +215,7 @@ export class WalletService {
       return tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
-          type: 'DEBIT',
+          type: TransactionType.DEBIT,
           amount: dto.amount,
           balanceBefore,
           balanceAfter,

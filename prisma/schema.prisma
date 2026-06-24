@@ -7,6 +7,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
 model Developer {
   id            String   @id @default(uuid())
   email         String   @unique
@@ -15,7 +31,7 @@ model Developer {
   lastName      String
   isVerified    Boolean  @default(false)
   verifyToken   String?
-  role          String   @default("USER")
+  role          Role     @default(USER)
   wallet        Wallet?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -98,7 +114,8 @@ model Wallet {
 
 model WalletTransaction {
   id              String   @id @default(uuid())
-  type            String
+  type            TransactionType
+  status          TransactionStatus @default(SUCCESS)
   amount          Decimal  @db.Decimal(20, 2)
   balanceBefore   Decimal  @db.Decimal(20, 2)
   balanceAfter    Decimal  @db.Decimal(20, 2)
