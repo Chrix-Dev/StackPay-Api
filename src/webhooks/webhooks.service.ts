@@ -92,7 +92,7 @@ export class WebhooksService {
     return { message: 'Test event sent' };
   }
 
-  async deliverWebhook(webhook: any, payload: any) {
+  async deliverWebhook(webhook: any, payload: any, deliveryId?: string, attempts: number = 1) {
     const signature = crypto
       .createHmac('sha256', webhook.secret)
       .update(JSON.stringify(payload))
@@ -117,6 +117,26 @@ export class WebhooksService {
       statusCode = error?.response?.status ?? null;
     }
 
+    if (deliveryId) {
+    await this.prisma.webhookDelivery.upsert({
+      where: { id: deliveryId },
+      create: {
+        id: deliveryId,
+        webhookId: webhook.id,
+        event: payload.event,
+        payload,
+        statusCode,
+        success,
+        attempts,
+      },
+      update: {
+        statusCode,
+        success,
+        attempts,
+      },
+    });
+  } else {
+
     await this.prisma.webhookDelivery.create({
       data: {
         webhookId: webhook.id,
@@ -124,11 +144,11 @@ export class WebhooksService {
         payload,
         statusCode,
         success,
-        attempts: 1,
+        attempts,
       },
     });
-
-    return success;
+  }
+  return success;
   }
 
   async emitEvent(developerId: string, event: string, data: any) {
@@ -143,9 +163,11 @@ export class WebhooksService {
   };
 
   for (const webhook of webhooks) {
+    const deliveryId = crypto.randomUUID();
+
     await this.webhookQueue.add(
       'deliver',
-      { webhook, payload },
+      { webhook, payload, deliveryId },
       {
         attempts: 3,
         backoff: {

@@ -8,7 +8,7 @@ export class WebhookProcessor {
 
   @Process('deliver')
   async handleDelivery(job: Job) {
-    const { webhook, payload } = job.data;
-    await this.webhooksService.deliverWebhook(webhook, payload);
+    const { webhook, payload, deliveryId } = job.data;
+    await this.webhooksService.deliverWebhook(webhook, payload, deliveryId, job.attemptsMade + 1);
   }
 }
