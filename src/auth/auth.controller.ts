@@ -5,6 +5,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @ApiTags('Auth')
 @Controller('api/v1/auth')
@@ -22,6 +23,16 @@ export class AuthController {
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
+  
+  @Post('refresh')
+refresh(@Body() dto: RefreshTokenDto) {
+  return this.authService.refresh(dto.refreshToken);
+}
+
+@Post('logout')
+logout(@Body() dto: RefreshTokenDto) {
+  return this.authService.logout(dto.refreshToken);
+}
 
   @Post('verify-email/:token')
   verifyEmail(@Param('token') token: string) {
