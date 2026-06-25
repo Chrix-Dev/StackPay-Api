@@ -39,6 +39,7 @@ model Developer {
   apiKeys       ApiKey[]
   requestLogs   RequestLog[]
   webhooks      Webhook[]
+  auditLogs     AuditLog[]
 }
 
 model ApiKey {
@@ -126,4 +127,14 @@ model WalletTransaction {
 
   walletId        String
   wallet          Wallet   @relation(fields: [walletId], references: [id])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  developerId String
+  developer   Developer @relation(fields: [developerId], references: [id])
 }

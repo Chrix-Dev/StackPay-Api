@@ -5,12 +5,13 @@ import { FundWalletDto } from './dto/fund-wallet.dto';
 import { TransferWalletDto } from './dto/transfer-wallet.dto';
 import { WithdrawWalletDto } from './dto/withdraw-wallet.dto';
 import { QueryTransactionsDto } from './dto/query-transactions.dto';
+import { AuditLogService } from '../common/audit-log.service';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class WalletService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private auditLog: AuditLogService,) {}
 
   private generateReference(): string {
     return `txn_${Date.now()}_${uuidv4().substring(0, 8)}`;
@@ -257,6 +258,7 @@ export class WalletService {
       where: { id: wallet.id },
       data: { pin: hashed },
     });
+    await this.auditLog.log(developerId, 'PIN_CHANGED');
 
     return { message: 'PIN changed successfully' };
   }
@@ -272,6 +274,7 @@ export class WalletService {
         lockReason: null,
       },
     });
+    await this.auditLog.log(developerId, 'WALLET_UNLOCKED');
 
     return { message: 'Wallet unlocked successfully' };
   }

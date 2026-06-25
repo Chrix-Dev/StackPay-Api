@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../common/audit-log.service';
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLog: AuditLogService,
+) {}
 
   async getStats(developerId: string) {
     const totalRequests = await this.prisma.requestLog.count({
@@ -48,9 +52,14 @@ export class DashboardService {
     });
   }
 
+  
   async getLog(developerId: string, logId: string) {
     return this.prisma.requestLog.findFirst({
       where: { id: logId, developerId },
     });
+  }
+
+  async getAuditLogs(developerId: string) {
+    return this.auditLog.getLogs(developerId);
   }
 }

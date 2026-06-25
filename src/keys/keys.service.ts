@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { AuditLogService } from '../common/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateKeyDto } from './dto/create-key.dto';
 import * as crypto from 'crypto';
@@ -6,7 +7,7 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class KeysService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private auditLog: AuditLogService,) {}
 
   private generateKey(): string {
     const random = crypto.randomBytes(32).toString('hex');
@@ -65,6 +66,7 @@ export class KeysService {
       where: { id: keyId },
       data: { isActive: false },
     });
+    await this.auditLog.log(developerId, 'API_KEY_REVOKED', { keyId });
 
     return { message: 'API key revoked' };
   }

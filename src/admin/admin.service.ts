@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../common/audit-log.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private auditLog: AuditLogService,) {}
 
   async getDashboard() {
     const totalDevelopers = await this.prisma.developer.count();
@@ -127,7 +128,7 @@ export class AdminService {
         lockReason: null,
       },
     });
-
+    await this.auditLog.log(developerId, 'ADMIN_WALLET_UNLOCK');
     return { message: 'Wallet unlocked successfully' };
   }
 

@@ -24,4 +24,9 @@ export class DashboardController {
   getLog(@Req() req: any, @Param('id') id: string) {
     return this.dashboardService.getLog(req.user.id, id);
   }
+
+  @Get('audit-logs')
+  getAuditLogs(@Req() req: any) {
+    return this.dashboardService.getAuditLogs(req.user.id);
+  }
 }
