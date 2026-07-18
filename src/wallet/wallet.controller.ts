@@ -1,14 +1,14 @@
-import { Controller, Get, Post, Param, Query, Body, UseGuards, Req } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { CombinedAuthGuard } from '../common/guards/combined-auth.guard';
 import { WalletService } from './wallet.service';
 import { FundWalletDto } from './dto/fund-wallet.dto';
 import { TransferWalletDto } from './dto/transfer-wallet.dto';
 import { WithdrawWalletDto } from './dto/withdraw-wallet.dto';
-import { IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
 import { ChangePinDto } from './dto/change-pin.dto';
 import { QueryTransactionsDto } from './dto/query-transactions.dto';
+import { IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 class SetPinDto {
   @ApiProperty({ example: '1234' })
@@ -18,7 +18,7 @@ class SetPinDto {
 
 @ApiTags('Wallet')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(CombinedAuthGuard)
 @Controller('api/v1/wallet')
 export class WalletController {
   constructor(private walletService: WalletService) {}
@@ -52,12 +52,14 @@ export class WalletController {
   changePin(@Req() req: any, @Body() dto: ChangePinDto) {
     return this.walletService.changePin(req.user.id, dto.oldPin, dto.newPin);
   }
+
   @Get('transactions')
   getTransactions(@Req() req: any, @Query() query: QueryTransactionsDto) {
     return this.walletService.getTransactions(req.user.id, query);
   }
 
-   @Get('transactions/:id')
-   getTransaction(@Req() req: any, @Param('id') id: string) {
+  @Get('transactions/:id')
+  getTransaction(@Req() req: any, @Param('id') id: string) {
     return this.walletService.getTransaction(req.user.id, id);
-}}
+  }
+}
