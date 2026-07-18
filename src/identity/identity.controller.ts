@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { CombinedAuthGuard } from '../common/guards/combined-auth.guard';
 import { IdentityService } from './identity.service';
 import { VerifyBvnDto } from './dto/verify-bvn.dto';
 import { VerifyNinDto } from './dto/verify-nin.dto';
@@ -8,7 +8,7 @@ import { ResolveBankDto } from './dto/resolve-bank.dto';
 
 @ApiTags('Identity')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(CombinedAuthGuard)
 @Controller('api/v1/identity')
 export class IdentityController {
   constructor(private identityService: IdentityService) {}
