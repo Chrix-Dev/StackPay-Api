@@ -7,14 +7,13 @@ import { WithdrawWalletDto } from './dto/withdraw-wallet.dto';
 import { QueryTransactionsDto } from './dto/query-transactions.dto';
 import { AuditLogService } from '../common/audit-log.service';
 import * as bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class WalletService {
   constructor(private prisma: PrismaService, private auditLog: AuditLogService,) {}
 
   private generateReference(): string {
-    return `txn_${Date.now()}_${uuidv4().substring(0, 8)}`;
+    return `txn_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
   }
 
   private async handleFailedPin(wallet: any) {

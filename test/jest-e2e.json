@@ -5,5 +5,12 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "globalSetup": "<rootDir>/../test/jest-global-setup.ts",
+  "moduleNameMapper": {
+    "^uuid$": "<rootDir>/../node_modules/uuid/dist/index.js"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(uuid|bull)/)"
+  ]
 }

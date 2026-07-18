@@ -4,7 +4,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -51,7 +50,7 @@ private async issueTokens(developerId: string, email: string) {
     if (exists) throw new BadRequestException('Email already registered');
 
     const hashed = await bcrypt.hash(dto.password, 10);
-    const verifyToken = uuidv4();
+    const verifyToken = crypto.randomUUID();
 
     const developer = await this.prisma.developer.create({
       data: {
