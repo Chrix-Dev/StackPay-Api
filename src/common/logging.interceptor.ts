@@ -30,6 +30,7 @@ export class LoggingInterceptor implements NestInterceptor {
               statusCode,
               duration,
               developerId: user.id,
+              apiKeyId: user.apiKeyId ?? null,
             },
           });
         }

@@ -25,4 +25,9 @@ export class KeysController {
   revokeKey(@Req() req: any, @Param('id') id: string) {
     return this.keysService.revokeKey(req.user.id, id);
   }
+
+  @Get(':id/usage')
+  getUsage(@Req() req: any, @Param('id') id: string) {
+    return this.keysService.getUsage(req.user.id, id);
+}
 }

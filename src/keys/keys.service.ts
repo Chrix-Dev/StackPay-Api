@@ -84,4 +84,42 @@ export class KeysService {
 
     return null;
   }
+
+  async getUsage(developerId: string, keyId: string) {
+  const apiKey = await this.prisma.apiKey.findUnique({
+    where: { id: keyId },
+  });
+
+  if (!apiKey) throw new NotFoundException('API key not found');
+  if (apiKey.developerId !== developerId) {
+    throw new ForbiddenException('This key does not belong to you');
+  }
+
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [totalRequests, todayRequests, monthRequests, successRequests, lastLog] = await Promise.all([
+    this.prisma.requestLog.count({ where: { apiKeyId: keyId } }),
+    this.prisma.requestLog.count({ where: { apiKeyId: keyId, createdAt: { gte: startOfDay } } }),
+    this.prisma.requestLog.count({ where: { apiKeyId: keyId, createdAt: { gte: startOfMonth } } }),
+    this.prisma.requestLog.count({ where: { apiKeyId: keyId, statusCode: { gte: 200, lt: 300 } } }),
+    this.prisma.requestLog.findFirst({ where: { apiKeyId: keyId }, orderBy: { createdAt: 'desc' } }),
+  ]);
+
+  const successRate = totalRequests > 0
+    ? ((successRequests / totalRequests) * 100).toFixed(2)
+    : '0.00';
+
+  return {
+    keyId,
+    name: apiKey.name,
+    isActive: apiKey.isActive,
+    totalRequests,
+    todayRequests,
+    monthRequests,
+    successRate: `${successRate}%`,
+    lastUsedAt: lastLog?.createdAt ?? null,
+  };
+}
 }
