@@ -30,4 +30,8 @@ export class KeysController {
   getUsage(@Req() req: any, @Param('id') id: string) {
     return this.keysService.getUsage(req.user.id, id);
 }
+  @Get(':id/quota')
+  getQuota(@Req() req: any, @Param('id') id: string) {
+    return this.keysService.getQuota(req.user.id, id);
+}
 }

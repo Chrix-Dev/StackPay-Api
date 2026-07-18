@@ -23,6 +23,11 @@ enum TransactionStatus {
   FAILED
 }
 
+enum Plan {
+  FREE
+  PRO
+}
+
 model Developer {
   id            String   @id @default(uuid())
   email         String   @unique
@@ -41,6 +46,7 @@ model Developer {
   webhooks      Webhook[]
   auditLogs     AuditLog[]
   refreshTokens RefreshToken[]
+  plan          Plan     @default(FREE)
 }
 
 model ApiKey {

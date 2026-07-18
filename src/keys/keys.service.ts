@@ -1,13 +1,18 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { AuditLogService } from '../common/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { CreateKeyDto } from './dto/create-key.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class KeysService {
-  constructor(private prisma: PrismaService, private auditLog: AuditLogService,) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLog: AuditLogService,
+    private redis: RedisService,
+  ) {}
 
   private generateKey(): string {
     const random = crypto.randomBytes(32).toString('hex');
@@ -38,7 +43,7 @@ export class KeysService {
   }
 
   async listKeys(developerId: string) {
-    const keys = await this.prisma.apiKey.findMany({
+    return this.prisma.apiKey.findMany({
       where: { developerId },
       select: {
         id: true,
@@ -47,8 +52,6 @@ export class KeysService {
         createdAt: true,
       },
     });
-
-    return keys;
   }
 
   async revokeKey(developerId: string, keyId: string) {
@@ -66,6 +69,7 @@ export class KeysService {
       where: { id: keyId },
       data: { isActive: false },
     });
+
     await this.auditLog.log(developerId, 'API_KEY_REVOKED', { keyId });
 
     return { message: 'API key revoked' };
@@ -86,40 +90,68 @@ export class KeysService {
   }
 
   async getUsage(developerId: string, keyId: string) {
-  const apiKey = await this.prisma.apiKey.findUnique({
-    where: { id: keyId },
-  });
+    const apiKey = await this.prisma.apiKey.findUnique({
+      where: { id: keyId },
+    });
 
-  if (!apiKey) throw new NotFoundException('API key not found');
-  if (apiKey.developerId !== developerId) {
-    throw new ForbiddenException('This key does not belong to you');
+    if (!apiKey) throw new NotFoundException('API key not found');
+    if (apiKey.developerId !== developerId) {
+      throw new ForbiddenException('This key does not belong to you');
+    }
+
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalRequests, todayRequests, monthRequests, successRequests, lastLog] = await Promise.all([
+      this.prisma.requestLog.count({ where: { apiKeyId: keyId } }),
+      this.prisma.requestLog.count({ where: { apiKeyId: keyId, createdAt: { gte: startOfDay } } }),
+      this.prisma.requestLog.count({ where: { apiKeyId: keyId, createdAt: { gte: startOfMonth } } }),
+      this.prisma.requestLog.count({ where: { apiKeyId: keyId, statusCode: { gte: 200, lt: 300 } } }),
+      this.prisma.requestLog.findFirst({ where: { apiKeyId: keyId }, orderBy: { createdAt: 'desc' } }),
+    ]);
+
+    const successRate = totalRequests > 0
+      ? ((successRequests / totalRequests) * 100).toFixed(2)
+      : '0.00';
+
+    return {
+      keyId,
+      name: apiKey.name,
+      isActive: apiKey.isActive,
+      totalRequests,
+      todayRequests,
+      monthRequests,
+      successRate: `${successRate}%`,
+      lastUsedAt: lastLog?.createdAt ?? null,
+    };
   }
 
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  async getQuota(developerId: string, keyId: string) {
+    const apiKey = await this.prisma.apiKey.findUnique({
+      where: { id: keyId },
+      include: { developer: true },
+    });
 
-  const [totalRequests, todayRequests, monthRequests, successRequests, lastLog] = await Promise.all([
-    this.prisma.requestLog.count({ where: { apiKeyId: keyId } }),
-    this.prisma.requestLog.count({ where: { apiKeyId: keyId, createdAt: { gte: startOfDay } } }),
-    this.prisma.requestLog.count({ where: { apiKeyId: keyId, createdAt: { gte: startOfMonth } } }),
-    this.prisma.requestLog.count({ where: { apiKeyId: keyId, statusCode: { gte: 200, lt: 300 } } }),
-    this.prisma.requestLog.findFirst({ where: { apiKeyId: keyId }, orderBy: { createdAt: 'desc' } }),
-  ]);
+    if (!apiKey) throw new NotFoundException('API key not found');
+    if (apiKey.developerId !== developerId) {
+      throw new ForbiddenException('This key does not belong to you');
+    }
 
-  const successRate = totalRequests > 0
-    ? ((successRequests / totalRequests) * 100).toFixed(2)
-    : '0.00';
+    const now = new Date();
+    const quotaKey = `quota:usage:${keyId}:${now.getFullYear()}:${now.getMonth() + 1}`;
+    const used = await this.redis.getCount(quotaKey);
 
-  return {
-    keyId,
-    name: apiKey.name,
-    isActive: apiKey.isActive,
-    totalRequests,
-    todayRequests,
-    monthRequests,
-    successRate: `${successRate}%`,
-    lastUsedAt: lastLog?.createdAt ?? null,
-  };
-}
+    const limits = { FREE: 1000, PRO: 10000 };
+    const limit = limits[apiKey.developer.plan] ?? 1000;
+
+    return {
+      keyId,
+      plan: apiKey.developer.plan,
+      limit,
+      used,
+      remaining: Math.max(0, limit - used),
+      resetsAt: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+    };
+  }
 }

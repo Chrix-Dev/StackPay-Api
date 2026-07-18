@@ -4,6 +4,7 @@ import { KeysService } from './keys.service';
 import { ApiKeyGuard } from './guards/api-key.guard';
 
 @Module({
+  imports: [],
   controllers: [KeysController],
   providers: [KeysService, ApiKeyGuard],
   exports: [KeysService, ApiKeyGuard],

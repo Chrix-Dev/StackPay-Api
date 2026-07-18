@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
@@ -47,4 +47,9 @@ export class AdminController {
   listWebhookDeliveries() {
     return this.adminService.listWebhookDeliveries();
   }
+
+  @Patch('developers/:id/plan')
+  upgradePlan(@Param('id') id: string, @Body() body: { plan: string }) {
+    return this.adminService.upgradePlan(id, body.plan);
+}
 }

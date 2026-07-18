@@ -163,4 +163,19 @@ export class AdminService {
       },
     });
   }
+
+  async upgradePlan(developerId: string, plan: string) {
+  const developer = await this.prisma.developer.findUnique({
+    where: { id: developerId },
+  });
+
+  if (!developer) throw new NotFoundException('Developer not found');
+
+  await this.prisma.developer.update({
+    where: { id: developerId },
+    data: { plan: plan as any },
+  });
+
+  return { message: `Developer plan updated to ${plan}` };
+}
 }
