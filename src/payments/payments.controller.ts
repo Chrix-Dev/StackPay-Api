@@ -37,4 +37,14 @@ export class PaymentsController {
     const signature = provider === 'flutterwave' ? flutterwaveSig : paystackSig;
     return this.paymentsService.handleWebhook(signature, payload, provider);
   }
+
+  @Get('providers')
+  getProviders() {
+  return {
+    providers: [
+      { name: 'paystack', default: true, description: 'Paystack payment gateway' },
+      { name: 'flutterwave', default: false, description: 'Flutterwave payment gateway' },
+    ],
+  };
+}
 }
