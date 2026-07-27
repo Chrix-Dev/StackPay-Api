@@ -1,8 +1,8 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Req, Headers as NestHeaders, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, UseGuards, Req, Headers as NestHeaders, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CombinedAuthGuard } from '../common/guards/combined-auth.guard';
 import { PaymentsService } from './payments.service';
-import { InitializePaymentDto } from './dto/initialize-payment.dto';
+import { InitializePaymentDto, PaymentProviderEnum } from './dto/initialize-payment.dto';
 
 @ApiTags('Payments')
 @Controller('api/v1/payments')
@@ -19,16 +19,22 @@ export class PaymentsController {
   @Get('verify/:reference')
   @ApiBearerAuth()
   @UseGuards(CombinedAuthGuard)
-  verifyPayment(@Param('reference') reference: string) {
-    return this.paymentsService.verifyPayment(reference);
+  verifyPayment(
+    @Param('reference') reference: string,
+    @Query('provider') provider?: PaymentProviderEnum,
+  ) {
+    return this.paymentsService.verifyPayment(reference, provider);
   }
 
   @Post('webhook')
   @HttpCode(200)
   handleWebhook(
-    @NestHeaders('x-paystack-signature') signature: string,
+    @NestHeaders('x-paystack-signature') paystackSig: string,
+    @NestHeaders('verif-hash') flutterwaveSig: string,
+    @Query('provider') provider: string,
     @Body() payload: any,
   ) {
-    return this.paymentsService.handleWebhook(signature, payload);
+    const signature = provider === 'flutterwave' ? flutterwaveSig : paystackSig;
+    return this.paymentsService.handleWebhook(signature, payload, provider);
   }
 }

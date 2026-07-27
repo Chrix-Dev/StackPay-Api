@@ -1,5 +1,11 @@
-import { IsEmail, IsNumber, IsString, IsOptional } from 'class-validator';
+import { IsEmail, IsNumber, IsString, IsOptional, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+
+
+export enum PaymentProviderEnum {
+  PAYSTACK = 'paystack',
+  FLUTTERWAVE = 'flutterwave',
+}
 
 export class InitializePaymentDto {
   @ApiProperty({ example: 'chris@test.com' })
@@ -19,4 +25,9 @@ export class InitializePaymentDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiProperty({ enum: PaymentProviderEnum, example: PaymentProviderEnum.PAYSTACK, required: false })
+  @IsEnum(PaymentProviderEnum)
+  @IsOptional()
+  provider?: PaymentProviderEnum;
 }
