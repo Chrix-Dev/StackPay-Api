@@ -155,4 +155,76 @@ describe('AuthService', () => {
       });
     });
   });
+
+  describe('refresh', () => {
+  it('should throw if refresh token not found', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(null);
+
+    await expect(authService.refresh('invalid-token')).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it('should throw if refresh token is revoked', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({
+      id: 'rt1',
+      revoked: true,
+      expiresAt: new Date(Date.now() + 10000),
+      developer: { id: 'd1', email: 'chris@test.com' },
+    });
+
+    await expect(authService.refresh('some-token')).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it('should throw if refresh token is expired', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({
+      id: 'rt1',
+      revoked: false,
+      expiresAt: new Date(Date.now() - 10000),
+      developer: { id: 'd1', email: 'chris@test.com' },
+    });
+
+    await expect(authService.refresh('some-token')).rejects.toThrow(
+      UnauthorizedException,
+    );
+  });
+
+  it('should return new token pair on valid refresh token', async () => {
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({
+      id: 'rt1',
+      revoked: false,
+      expiresAt: new Date(Date.now() + 100000),
+      developer: { id: 'd1', email: 'chris@test.com' },
+    });
+    mockPrisma.refreshToken.update.mockResolvedValue({});
+    mockPrisma.refreshToken.create.mockResolvedValue({});
+
+    const result = await authService.refresh('valid-token');
+
+    expect(result.accessToken).toBeDefined();
+    expect(result.refreshToken).toBeDefined();
+    expect(mockPrisma.refreshToken.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { revoked: true },
+      }),
+    );
+  });
+});
+
+describe('logout', () => {
+  it('should revoke refresh token on logout', async () => {
+    mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await authService.logout('some-token');
+
+    expect(result.message).toBe('Logged out successfully');
+    expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { revoked: true },
+      }),
+    );
+  });
+});
 });
