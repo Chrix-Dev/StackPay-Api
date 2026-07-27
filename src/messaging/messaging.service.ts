@@ -1,11 +1,16 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { RedisService } from '../common/redis.service';
 import { SendOtpDto, OtpChannel } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @Injectable()
 export class MessagingService {
-  constructor(private redis: RedisService) {}
+  constructor(
+    private redis: RedisService,
+    @InjectPinoLogger(MessagingService.name)
+    private readonly logger: PinoLogger,
+  ) {}
 
   private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -19,13 +24,13 @@ export class MessagingService {
 
     switch (dto.channel) {
       case OtpChannel.SMS:
-        console.log(`[TERMII SMS] Sending OTP ${otp} to ${dto.recipient}`);
+        this.logger.info({ recipient: dto.recipient, channel: 'sms' }, 'Sending OTP via Termii SMS');
         break;
       case OtpChannel.WHATSAPP:
-        console.log(`[TERMII WHATSAPP] Sending OTP ${otp} to ${dto.recipient}`);
+        this.logger.info({ recipient: dto.recipient, channel: 'whatsapp' }, 'Sending OTP via Termii WhatsApp');
         break;
       case OtpChannel.EMAIL:
-        console.log(`[SENDGRID] Sending OTP ${otp} to ${dto.recipient}`);
+        this.logger.info({ recipient: dto.recipient, channel: 'email' }, 'Sending OTP via SendGrid');
         break;
     }
 
@@ -48,6 +53,8 @@ export class MessagingService {
     }
 
     await this.redis.del(key);
+
+    this.logger.info({ recipient: dto.recipient }, 'OTP verified successfully');
 
     return { message: 'OTP verified successfully' };
   }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { VerifyBvnDto } from './dto/verify-bvn.dto';
 import { VerifyNinDto } from './dto/verify-nin.dto';
 import { ResolveBankDto } from './dto/resolve-bank.dto';
@@ -7,7 +8,11 @@ import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class IdentityService {
-  constructor(private http: HttpService) {}
+  constructor(
+    private http: HttpService,
+    @InjectPinoLogger(IdentityService.name)
+    private readonly logger: PinoLogger,
+  ) {}
 
   private get paystackHeaders() {
     return {
@@ -17,8 +22,7 @@ export class IdentityService {
   }
 
   async verifyBvn(dto: VerifyBvnDto) {
-    // Simulated — real implementation would call Smile ID
-    console.log(`[SMILE ID] Verifying BVN: ${dto.bvn}`);
+    this.logger.info({ bvn: dto.bvn.substring(0, 4) + '****' }, 'BVN verification requested');
 
     return {
       verified: true,
@@ -34,8 +38,7 @@ export class IdentityService {
   }
 
   async verifyNin(dto: VerifyNinDto) {
-    // Simulated — real implementation would call NIBSS
-    console.log(`[NIBSS] Verifying NIN: ${dto.nin}`);
+    this.logger.info({ nin: dto.nin.substring(0, 4) + '****' }, 'NIN verification requested');
 
     return {
       verified: true,
@@ -51,6 +54,8 @@ export class IdentityService {
   }
 
   async resolveBank(dto: ResolveBankDto) {
+    this.logger.info({ accountNumber: dto.accountNumber, bankCode: dto.bankCode }, 'Bank account resolution requested');
+
     const response = await firstValueFrom(
       this.http.get(
         `https://api.paystack.co/bank/resolve?account_number=${dto.accountNumber}&bank_code=${dto.bankCode}`,
