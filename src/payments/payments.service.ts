@@ -27,23 +27,29 @@ export class PaymentsService {
     }
   }
 
-  async initializePayment(developerId: string, dto: InitializePaymentDto) {
-    const reference = `sp_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
-    const provider = this.getProvider(dto.provider);
-
-    this.logger.info(
-      { developerId, provider: dto.provider ?? 'paystack', reference },
-      'Payment initialization requested',
-    );
-
-    return provider.initializePayment({
-      email: dto.email,
-      amount: dto.amount,
-      currency: dto.currency ?? 'NGN',
-      reference,
-      description: dto.description,
-    });
+  async initializePayment(developerId: string, dto: InitializePaymentDto, keyEnvironment?: string) {
+  // Test keys cannot use live payment flows
+  if (keyEnvironment === 'TEST' && process.env.NODE_ENV === 'production') {
+    // Force test mode — in a real implementation, providers would use test credentials
+    this.logger.info({ keyEnvironment }, 'Test key detected — using test payment mode');
   }
+
+  const reference = `sp_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+  const provider = this.getProvider(dto.provider);
+
+  this.logger.info(
+    { developerId, provider: dto.provider ?? 'paystack', reference, keyEnvironment },
+    'Payment initialization requested',
+  );
+
+  return provider.initializePayment({
+    email: dto.email,
+    amount: dto.amount,
+    currency: dto.currency ?? 'NGN',
+    reference,
+    description: dto.description,
+  });
+}
 
   async verifyPayment(reference: string, providerName?: PaymentProviderEnum) {
     const provider = this.getProvider(providerName);

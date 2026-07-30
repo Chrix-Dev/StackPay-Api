@@ -28,6 +28,11 @@ enum Plan {
   PRO
 }
 
+enum KeyEnvironment {
+  TEST
+  LIVE
+}
+
 model Developer {
   id            String   @id @default(uuid())
   email         String   @unique
@@ -54,6 +59,7 @@ model ApiKey {
   key         String   @unique
   name        String
   isActive    Boolean  @default(true)
+  environment KeyEnvironment @default(TEST)
   createdAt   DateTime @default(now())
 
   developerId String

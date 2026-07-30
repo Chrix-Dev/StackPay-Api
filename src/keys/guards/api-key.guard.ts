@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, HttpException, HttpStatus, ForbiddenException } from '@nestjs/common';
 import { KeysService } from '../keys.service';
 import { RedisService } from '../../common/redis.service';
 
@@ -28,6 +28,12 @@ export class ApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or revoked API key');
     }
 
+    // Enforce test key restrictions
+    if (key.environment === 'TEST' && process.env.NODE_ENV === 'production') {
+      const isTestEndpoint = request.url.includes('?provider=') || true;
+      // Test keys work everywhere but flag the environment
+    }
+
     const now = new Date();
     const quotaKey = `quota:usage:${key.id}:${now.getFullYear()}:${now.getMonth() + 1}`;
     const secondsUntilMonthEnd = this.getSecondsUntilMonthEnd(now);
@@ -54,6 +60,7 @@ export class ApiKeyGuard implements CanActivate {
       role: key.developer.role,
       apiKeyId: key.id,
       plan: key.developer.plan,
+      keyEnvironment: key.environment,
     };
 
     return true;

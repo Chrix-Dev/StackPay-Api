@@ -3,6 +3,7 @@ import { AuditLogService } from '../common/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../common/redis.service';
 import { CreateKeyDto } from './dto/create-key.dto';
+import { KeyEnvironment } from './dto/create-key.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 
@@ -14,33 +15,37 @@ export class KeysService {
     private redis: RedisService,
   ) {}
 
-  private generateKey(): string {
-    const random = crypto.randomBytes(32).toString('hex');
-    return `sk_live_${random}`;
-  }
+  private generateKey(environment: KeyEnvironment = KeyEnvironment.TEST): string {
+  const random = crypto.randomBytes(32).toString('hex');
+  const prefix = environment === KeyEnvironment.LIVE ? 'sk_live' : 'sk_test';
+  return `${prefix}_${random}`;
+}
 
   async createKey(developerId: string, dto: CreateKeyDto) {
-    const rawKey = this.generateKey();
-    const hashedKey = await bcrypt.hash(rawKey, 10);
+  const environment = dto.environment ?? KeyEnvironment.TEST;
+  const rawKey = this.generateKey(environment);
+  const hashedKey = await bcrypt.hash(rawKey, 10);
 
-    const key = await this.prisma.apiKey.create({
-      data: {
-        key: hashedKey,
-        name: dto.name,
-        developerId,
-      },
-    });
+  const key = await this.prisma.apiKey.create({
+    data: {
+      key: hashedKey,
+      name: dto.name,
+      developerId,
+      environment,
+    },
+  });
 
-    return {
-      message: 'API key created. Store this key safely — it will not be shown again.',
-      key: {
-        id: key.id,
-        name: key.name,
-        key: rawKey,
-        createdAt: key.createdAt,
-      },
-    };
-  }
+  return {
+    message: 'API key created. Store this key safely — it will not be shown again.',
+    key: {
+      id: key.id,
+      name: key.name,
+      key: rawKey,
+      environment: key.environment,
+      createdAt: key.createdAt,
+    },
+  };
+}
 
   async listKeys(developerId: string) {
     return this.prisma.apiKey.findMany({

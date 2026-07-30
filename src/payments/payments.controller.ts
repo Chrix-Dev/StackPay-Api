@@ -13,7 +13,7 @@ export class PaymentsController {
   @ApiBearerAuth()
   @UseGuards(CombinedAuthGuard)
   initializePayment(@Req() req: any, @Body() dto: InitializePaymentDto) {
-    return this.paymentsService.initializePayment(req.user.id, dto);
+    return this.paymentsService.initializePayment(req.user.id, dto, req.user.keyEvironment);
   }
 
   @Get('verify/:reference')
