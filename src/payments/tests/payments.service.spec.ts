@@ -49,45 +49,45 @@ describe('PaymentsService', () => {
   });
 
   describe('initializePayment', () => {
-    it('should use Paystack by default', async () => {
-      mockPaystackProvider.initializePayment.mockResolvedValue({
-        provider: 'paystack',
-        reference: 'sp_123',
-        paymentUrl: 'https://paystack.com/pay/xxx',
-        status: 'pending',
-        raw: {},
-      });
-
-      const result = await paymentsService.initializePayment('d1', {
-        email: 'chris@test.com',
-        amount: 5000,
-      });
-
-      expect(result.provider).toBe('paystack');
-      expect(mockPaystackProvider.initializePayment).toHaveBeenCalledTimes(1);
-      expect(mockFlutterwaveProvider.initializePayment).not.toHaveBeenCalled();
-    });
-
-    it('should use Flutterwave when specified', async () => {
-      mockFlutterwaveProvider.initializePayment.mockResolvedValue({
-        provider: 'flutterwave',
-        reference: 'sp_456',
-        paymentUrl: 'https://checkout.flutterwave.com/xxx',
-        status: 'pending',
-        raw: {},
-      });
-
-      const result = await paymentsService.initializePayment('d1', {
-        email: 'chris@test.com',
-        amount: 5000,
-        provider: PaymentProviderEnum.FLUTTERWAVE,
-      });
-
-      expect(result.provider).toBe('flutterwave');
-      expect(mockFlutterwaveProvider.initializePayment).toHaveBeenCalledTimes(1);
-      expect(mockPaystackProvider.initializePayment).not.toHaveBeenCalled();
-    });
+   it('should use Paystack by default', async () => {
+    mockPaystackProvider.initializePayment.mockResolvedValue({
+    provider: 'paystack',
+    reference: 'sp_123',
+    paymentUrl: 'https://paystack.com/pay/xxx',
+    status: 'pending',
+    raw: {},
   });
+
+  const result = await paymentsService.initializePayment('d1', {
+    email: 'chris@test.com',
+    amount: 5000,
+  }, 'TEST');
+
+  expect(result.provider).toBe('paystack');
+  expect(mockPaystackProvider.initializePayment).toHaveBeenCalledTimes(1);
+  expect(mockFlutterwaveProvider.initializePayment).not.toHaveBeenCalled();
+});
+
+  it('should use Flutterwave when specified', async () => {
+    mockFlutterwaveProvider.initializePayment.mockResolvedValue({
+    provider: 'flutterwave',
+    reference: 'sp_456',
+    paymentUrl: 'https://checkout.flutterwave.com/xxx',
+    status: 'pending',
+    raw: {},
+  });
+
+  const result = await paymentsService.initializePayment('d1', {
+    email: 'chris@test.com',
+    amount: 5000,
+    provider: PaymentProviderEnum.FLUTTERWAVE,
+  }, 'TEST');
+
+  expect(result.provider).toBe('flutterwave');
+  expect(mockFlutterwaveProvider.initializePayment).toHaveBeenCalledTimes(1);
+  expect(mockPaystackProvider.initializePayment).not.toHaveBeenCalled();
+  });
+});
 
   describe('verifyPayment', () => {
     it('should verify via Paystack by default', async () => {

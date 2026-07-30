@@ -40,20 +40,39 @@ describe('KeysService', () => {
   });
 
   describe('createKey', () => {
-    it('should create a key and return raw key once', async () => {
-      mockPrisma.apiKey.create.mockResolvedValue({
-        id: 'k1',
-        name: 'Production',
-        createdAt: new Date(),
-      });
-
-      const result = await keysService.createKey('d1', { name: 'Production' });
-
-      expect(result.message).toContain('Store this key safely');
-      expect(result.key.key).toMatch(/^sk_live_/);
-      expect(mockPrisma.apiKey.create).toHaveBeenCalledTimes(1);
-    });
+   it('should create a test key by default with sk_test_ prefix', async () => {
+    mockPrisma.apiKey.create.mockResolvedValue({
+    id: 'k1',
+    name: 'Production',
+    environment: 'TEST',
+    createdAt: new Date(),
   });
+
+  const result = await keysService.createKey('d1', { name: 'Production' });
+
+  expect(result.message).toContain('Store this key safely');
+  expect(result.key.key).toMatch(/^sk_test_/);
+  expect(result.key.environment).toBe('TEST');
+  expect(mockPrisma.apiKey.create).toHaveBeenCalledTimes(1);
+});
+
+  it('should create a live key with sk_live_ prefix when environment is LIVE', async () => {
+    mockPrisma.apiKey.create.mockResolvedValue({
+    id: 'k2',
+    name: 'Production',
+    environment: 'LIVE',
+    createdAt: new Date(),
+  });
+
+  const result = await keysService.createKey('d1', {
+    name: 'Production',
+    environment: 'LIVE' as any,
+  });
+
+  expect(result.key.key).toMatch(/^sk_live_/);
+  expect(result.key.environment).toBe('LIVE');
+  });
+});
 
   describe('revokeKey', () => {
     it('should throw if key not found', async () => {
